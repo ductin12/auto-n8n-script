@@ -9,8 +9,6 @@ echo "======================================================================"
 if [[ $EUID -ne 0 ]]; then
    echo "Script này cần được chạy với quyền root" 
    exit 1
-fi
-
 # Hàm thiết lập swap tự động
 setup_swap() {
     echo "Kiểm tra và thiết lập swap tự động..."
@@ -201,8 +199,6 @@ else
     /opt/yt-dlp-venv/bin/pip install yt-dlp
     ln -sf /opt/yt-dlp-venv/bin/yt-dlp /usr/local/bin/yt-dlp
     chmod +x /usr/local/bin/yt-dlp
-fi
-
 # Đảm bảo cron service đang chạy
 systemctl enable cron
 systemctl start cron
@@ -211,8 +207,6 @@ systemctl start cron
 check_commands
 
 # Nhận input domain từ người dùng
-fi
-
 # Cài đặt Docker và Docker Compose
 install_docker
 
@@ -293,11 +287,10 @@ services:
       - "5678:5678"
     environment:
       - N8N_HOST=localhost
-      - N8N_HOST=${DOMAIN}
       - N8N_PORT=5678
-      -       - N8N_PROTOCOL=http
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678
       - NODE_ENV=production
-      -       - WEBHOOK_URL=http://localhost:5678
       - GENERIC_TIMEZONE=Asia/Ho_Chi_Minh
       # Cấu hình binary data mode
       - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
@@ -318,13 +311,6 @@ services:
 
 EOF
 
-# Tạo file Caddyfile
-echo "Tạo file Caddyfile..."
-cat << EOF > $N8N_DIR/Caddyfile
-${DOMAIN} {
-    reverse_proxy n8n:5678
-}
-EOF
 
 # Tạo script sao lưu workflow và credentials
 echo "Tạo script sao lưu workflow và credentials..."
@@ -356,8 +342,6 @@ if [ -z "\$N8N_CONTAINER" ]; then
     log "Lỗi: Không tìm thấy container n8n đang chạy"
     rm -rf \$TEMP_DIR
     exit 1
-fi
-
 # Xuất danh sách workflow IDs
 log "Xuất danh sách workflow IDs..."
 docker exec \$N8N_CONTAINER n8n export:workflow --all --quiet
@@ -374,8 +358,6 @@ else
         log "Đang xuất workflow: \$name (ID: \$id)"
         docker exec \$N8N_CONTAINER n8n export:workflow --id="\$id" --output="\$TEMP_DIR/workflows/\$id-\$name.json"
     done
-fi
-
 # Sao lưu thư mục .n8n
 log "Sao lưu thư mục .n8n chứa credentials..."
 cp -r /home/node/.n8n/database.sqlite \$TEMP_DIR/credentials/
@@ -409,16 +391,11 @@ echo "Khởi động các container..."
 echo "Lưu ý: Quá trình build image có thể mất vài phút, vui lòng đợi..."
 cd $N8N_DIR
 
-# Kiểm tra cổng 80 có đang được sử dụng không
-if netstat -tuln | grep -q ":80\s"; then
-    echo "CẢNH BÁO: Cổng 80 đang được sử dụng bởi một ứng dụng khác. Caddy sẽ sử dụng cổng 8080."
     # Đã cấu hình 8080 trong docker-compose.yml
 else
     # Nếu cổng 80 trống, cập nhật docker-compose.yml để sử dụng cổng 80
     sed -i 's/"8080:80"/"80:80"/g' $N8N_DIR/docker-compose.yml
     echo "Cổng 80 đang trống. Caddy sẽ sử dụng cổng 80 mặc định."
-fi
-
 # Kiểm tra quyền truy cập Docker
 echo "Kiểm tra quyền truy cập Docker..."
 if ! docker ps &>/dev/null; then
@@ -442,8 +419,6 @@ else
         echo "Lỗi: Không tìm thấy lệnh docker-compose hoặc docker compose."
         exit 1
     fi
-fi
-
 # Đợi một lúc để các container có thể khởi động
 echo "Đợi các container khởi động..."
 sleep 15
@@ -463,36 +438,22 @@ else
     if ! command -v docker-compose &> /dev/null; then
         DOCKER_COMPOSE_CMD="docker compose"
     fi
-fi
-
 if $DOCKER_CMD ps | grep -q "n8n-ffmpeg-latest" || $DOCKER_CMD ps | grep -q "n8n"; then
     echo "Container n8n đã chạy thành công."
 else
     echo "Container n8n đang được khởi động, có thể mất thêm thời gian..."
     echo "Bạn có thể kiểm tra logs bằng lệnh:"
     echo "  $DOCKER_COMPOSE_CMD logs -f"
-fi
-
 if $DOCKER_CMD ps | grep -q "caddy:2"; then
     echo "Container caddy đã chạy thành công."
 else
     echo "Container caddy đang được khởi động, có thể mất thêm thời gian..."
     echo "Bạn có thể kiểm tra logs bằng lệnh:"
     echo "  $DOCKER_COMPOSE_CMD logs -f"
-fi
-
-# Hiển thị thông tin về cổng được sử dụng
-CADDY_PORT=$(grep -o '"[0-9]\+:80"' $N8N_DIR/docker-compose.yml | cut -d':' -f1 | tr -d '"')
-echo ""
-echo "Cấu hình cổng HTTP: $CADDY_PORT"
-if [ "$CADDY_PORT" = "8080" ]; then
-    echo "Sử dụng cổng 8080 cho HTTP thay vì cổng 80 mặc định (tránh xung đột)."
-    echo "Bạn có thể truy cập bằng URL: http://${DOMAIN}:8080 hoặc https://${DOMAIN}"
+echo "Bạn có thể truy cập bằng URL: http://localhost:5678"
 else
     echo "Sử dụng cổng 80 mặc định cho HTTP."
     echo "Bạn có thể truy cập bằng URL: http://${DOMAIN} hoặc https://${DOMAIN}"
-fi
-
 # Kiểm tra FFmpeg, yt-dlp và Puppeteer trong container n8n
 echo "Kiểm tra FFmpeg, yt-dlp và Puppeteer trong container n8n..."
 
@@ -501,8 +462,6 @@ if ! docker ps &>/dev/null; then
     DOCKER_CMD="sudo docker"
 else
     DOCKER_CMD="docker"
-fi
-
 N8N_CONTAINER=$($DOCKER_CMD ps -q --filter "name=n8n" 2>/dev/null)
 if [ -n "$N8N_CONTAINER" ]; then
     if $DOCKER_CMD exec $N8N_CONTAINER ffmpeg -version &> /dev/null; then
@@ -530,8 +489,6 @@ if [ -n "$N8N_CONTAINER" ]; then
     fi
 else
     echo "Lưu ý: Không thể kiểm tra công cụ ngay lúc này. Container n8n chưa sẵn sàng."
-fi
-
 # Tạo script kiểm tra cập nhật tự động
 echo "Tạo script cập nhật tự động..."
 cat << EOF > $N8N_DIR/update-n8n.sh
@@ -555,8 +512,6 @@ elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
 else
     log "Không tìm thấy lệnh docker-compose hoặc docker compose."
     exit 1
-fi
-
 # Cập nhật yt-dlp trên host
 log "Cập nhật yt-dlp trên host system..."
 if command -v pipx &> /dev/null; then
@@ -565,15 +520,11 @@ elif [ -d "/opt/yt-dlp-venv" ]; then
     /opt/yt-dlp-venv/bin/pip install -U yt-dlp
 else
     log "Không tìm thấy cài đặt yt-dlp đã biết"
-fi
-
 # Lấy phiên bản hiện tại
 CURRENT_IMAGE_ID=\$(docker images -q n8n-ffmpeg-latest)
 if [ -z "\$CURRENT_IMAGE_ID" ]; then
     log "Không tìm thấy image n8n-ffmpeg-latest"
     exit 1
-fi
-
 # Kiểm tra và xóa image gốc n8nio/n8n cũ nếu cần
 OLD_BASE_IMAGE_ID=\$(docker images -q n8nio/n8n)
 
@@ -617,7 +568,6 @@ else
     else
         log "Không tìm thấy container n8n đang chạy"
     fi
-fi
 EOF
 
 # Đặt quyền thực thi cho script cập nhật
@@ -640,7 +590,6 @@ if [ "$(swapon --show | wc -l)" -gt 0 ]; then
     echo "  - Kích thước: ${SWAP_SIZE}"
     echo "  - Swappiness: $(cat /proc/sys/vm/swappiness) (Mức càng thấp càng ưu tiên dùng RAM)"
     echo "  - Vfs_cache_pressure: $(cat /proc/sys/vm/vfs_cache_pressure) (Mức càng thấp càng giữ cache lâu hơn)"
-fi
 echo "Các file cấu hình và dữ liệu được lưu trong $N8N_DIR"
 echo ""
 echo "► Tính năng tự động cập nhật đã được thiết lập:"
