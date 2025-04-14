@@ -391,15 +391,7 @@ echo "Khởi động các container..."
 echo "Lưu ý: Quá trình build image có thể mất vài phút, vui lòng đợi..."
 cd $N8N_DIR
 
-# Kiểm tra cổng 80 có đang được sử dụng không
-if netstat -tuln | grep -q ":80\s"; then
-    echo "CẢNH BÁO: Cổng 80 đang được sử dụng bởi một ứng dụng khác. Caddy sẽ sử dụng cổng 8080."
-    # Đã cấu hình 8080 trong docker-compose.yml
-else
-    # Nếu cổng 80 trống, cập nhật docker-compose.yml để sử dụng cổng 80
-    sed -i 's/"8080:80"/"80:80"/g' $N8N_DIR/docker-compose.yml
-    echo "Cổng 80 đang trống. Caddy sẽ sử dụng cổng 80 mặc định."
-fi
+
 
 # Kiểm tra quyền truy cập Docker
 echo "Kiểm tra quyền truy cập Docker..."
@@ -455,13 +447,6 @@ else
     echo "  $DOCKER_COMPOSE_CMD logs -f"
 fi
 
-if $DOCKER_CMD ps | grep -q "caddy:2"; then
-    echo "Container caddy đã chạy thành công."
-else
-    echo "Container caddy đang được khởi động, có thể mất thêm thời gian..."
-    echo "Bạn có thể kiểm tra logs bằng lệnh:"
-    echo "  $DOCKER_COMPOSE_CMD logs -f"
-fi
 
 # Kiểm tra FFmpeg, yt-dlp và Puppeteer trong container n8n
 echo "Kiểm tra FFmpeg, yt-dlp và Puppeteer trong container n8n..."
@@ -600,7 +585,7 @@ BACKUP_CRON="0 2 * * * $N8N_DIR/backup-workflows.sh"
 (crontab -l 2>/dev/null | grep -v "update-n8n.sh\|backup-workflows.sh"; echo "$UPDATE_CRON"; echo "$BACKUP_CRON") | crontab -
 
 echo "======================================================================"
-echo "N8n đã được cài đặt và cấu hình với FFmpeg, yt-dlp, Puppeteer và SSL sử dụng Caddy."
+echo "N8n đã được cài đặt và cấu hình với FFmpeg, yt-dlp, Puppeteer."
 echo "Truy cập https://${DOMAIN} để sử dụng."
 
 # Hiển thị thông tin về swap
